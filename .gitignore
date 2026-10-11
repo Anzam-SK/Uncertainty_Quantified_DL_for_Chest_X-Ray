@@ -58,7 +58,7 @@ chest_xray_uncertainty/data/*
 !chest_xray_uncertainty/data/splits/*.csv
 !chest_xray_uncertainty/data/Covid-X/
 chest_xray_uncertainty/data/Covid-X/*
-!chest_xray_uncertainty/data/Covid-X/*.txt
+chest_xray_uncertainty/data/Covid-X/*.txt
 chest_xray_uncertainty/data/*.pdf
 
 **/experiments/checkpoints/
