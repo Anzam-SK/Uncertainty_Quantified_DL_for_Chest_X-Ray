@@ -47,6 +47,25 @@ data/*
 !data/Covid-X/*.txt
 data/*.pdf
 *.zip
+
+# Project-local data and generated artifacts
+chest_xray_uncertainty/data/*
+!chest_xray_uncertainty/data/__init__.py
+!chest_xray_uncertainty/data/dataset.py
+!chest_xray_uncertainty/data/transforms.py
+!chest_xray_uncertainty/data/splits/
+!chest_xray_uncertainty/data/splits/*.txt
+!chest_xray_uncertainty/data/splits/*.csv
+!chest_xray_uncertainty/data/Covid-X/
+chest_xray_uncertainty/data/Covid-X/*
+!chest_xray_uncertainty/data/Covid-X/*.txt
+chest_xray_uncertainty/data/*.pdf
+
+**/experiments/checkpoints/
+**/experiments/logs/
+**/experiments/results/
+**/figures/
+**/graphs/
 *.tar
 *.tar.gz
 *.7z
