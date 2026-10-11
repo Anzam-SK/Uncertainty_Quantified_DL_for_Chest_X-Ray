@@ -1,0 +1,192 @@
+# =============================================================================
+# Uncertainty-Quantified Deep Learning Framework for Chest X-Ray Diagnosis
+# Anzam Shahriar Kabir | 2022521460123 | Sichuan University
+# =============================================================================
+# Single source of truth for all hyperparameters and paths.
+# No hardcoded values exist anywhere else in the codebase.
+# All modules load this file at runtime.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# DATA
+# -----------------------------------------------------------------------------
+data:
+  # Directory containing raw NIH ChestX-ray14 images (112,120 .png files)
+  nih_image_dir: "data/NIH ChestX-ray14"
+
+  # NIH labels CSV file
+  nih_labels_csv: "data/NIH ChestX-ray14/Data_Entry_2017.csv"
+
+  # Official NIH patient-level train/val split file
+  # Download alongside the dataset — do NOT create your own random split
+  # (same patient's scans must never appear in both train and test)
+  nih_train_csv: "data/NIH ChestX-ray14/train_val_list.txt"
+
+  # Official NIH test split file
+  nih_test_csv: "data/NIH ChestX-ray14/test_list.txt"
+
+  # Covid-X dataset directory — used exclusively for OOD testing
+  covidx_image_dir: "data/Covid-X/test"
+
+  # Covid-X split file (space-separated: ID filename label source)
+  covidx_csv: "data/Covid-X/test.txt"
+
+  # Input image size — DenseNet-121 and ResNet-50 both expect 224x224
+  image_size: 224
+
+  # DataLoader worker processes
+  # NOTE: Set to 0 on Windows if you get multiprocessing errors during testing.
+  # Increase to 4 on Linux/macOS or when running full training.
+  num_workers: 2
+
+  # CLAHE preprocessing parameters (applied in data/transforms.py)
+  clahe_clip_limit: 2.0    # contrast enhancement ceiling — prevents noise amplification
+  clahe_tile_size: 8       # local tile grid size (8x8 tiles per image)
+
+  # Train/validation split ratio (fraction used for validation)
+  # Applied to nih_train_csv — test set is always nih_test_csv
+  val_split: 0.2
+
+
+# -----------------------------------------------------------------------------
+# MODEL
+# -----------------------------------------------------------------------------
+model:
+  # Architecture selector — must match --model flag in scripts/train.py
+  # "densenet121" → MCDropoutDenseNet (your proposed model)
+  # "resnet50"    → ResNetBaseline (comparison baseline)
+  backbone: "densenet121"
+
+  # Number of output classes — fixed at 14 for NIH ChestX-ray14
+  num_classes: 14
+
+  # MC Dropout rate — applied to dropout layers in the classifier head
+  # Range: 0.1 (light) to 0.5 (heavy). Start with 0.3, tune if needed.
+  dropout_rate: 0.3
+
+  # Whether to load ImageNet pre-trained weights (always True for real training)
+  # Set to False only for unit tests (faster, no internet needed)
+  pretrained: true
+
+  # Epochs to keep backbone frozen before full fine-tuning begins
+  # During these epochs only the classifier head trains (faster convergence)
+  # After freeze_epochs, ALL layers unfreeze for full fine-tuning
+  freeze_epochs: 2
+
+
+# -----------------------------------------------------------------------------
+# TRAINING
+# -----------------------------------------------------------------------------
+training:
+  # Total maximum epochs — early stopping will usually terminate before this
+  epochs: 100
+
+  # Batch size per GPU step
+  # 48 aggressive config for RTX 4050 with AMP on 30k run
+  batch_size: 48
+
+  # Initial learning rate for Adam optimizer
+  # 1e-4 is standard for fine-tuning pre-trained CNNs
+  learning_rate: 0.00005  # 5e-5 — polishing phase on pre-trained 30k weights
+
+  # L2 regularization — helps prevent overfitting on medical datasets
+  weight_decay: 0.0001
+
+  # Early stopping: stop training if val_auc does not improve for this many epochs
+  # Increased to 10 to tolerate noise from smaller batch size during 10k run
+  early_stopping_patience: 10
+
+  # LR scheduler type: "plateau" (ReduceLROnPlateau) or "step" (StepLR)
+  lr_scheduler_type: step
+
+  # StepLR: drop LR by lr_step_gamma every lr_step_size epochs
+  lr_step_size: 7
+  lr_step_gamma: 0.1
+
+  # ReduceLROnPlateau settings (used only when lr_scheduler_type: plateau)
+  lr_scheduler_patience: 5
+  lr_scheduler_factor: 0.5
+
+  # Where to save best model checkpoints
+  # Subdirectory per experiment is appended by scripts/train.py automatically
+  checkpoint_dir: "experiments/checkpoints"
+
+  # Where to write TensorBoard event files
+  # Subdirectory per experiment is appended by scripts/train.py automatically
+  log_dir: "experiments/logs"
+
+  # Automatic Mixed Precision (AMP) — uses float16 where safe, float32 elsewhere
+  # Saves ~40% VRAM and speeds up training ~30-50% on RTX 4050
+  # Requires CUDA — automatically disabled if running on CPU
+  mixed_precision: true
+
+  # Random seed — used in scripts/train.py for full reproducibility
+  # Together with cudnn.deterministic=True, guarantees identical results across runs
+  seed: 42
+
+  # Full resume: restores model + optimizer + best_val_auc (continues same run)
+  resume_from: null
+
+  # Transfer learning: loads model weights only, resets optimizer and epoch to 0
+  transfer_from: "experiments/checkpoints/thesis_30k_power_run/best_model.pth"
+
+
+# -----------------------------------------------------------------------------
+# UNCERTAINTY
+# -----------------------------------------------------------------------------
+uncertainty:
+  # Number of MC Dropout forward passes for FINAL evaluation (evaluate.py)
+  # Higher T = more accurate uncertainty estimate but slower inference
+  # T=50 is the standard in literature (Gal & Ghahramani 2016)
+  mc_passes: 50
+
+  # Number of MC passes for SMOKE TEST only (scripts/smoke_test.py)
+  # Kept low so the smoke test completes quickly
+  mc_passes_fast: 10
+
+  # Uncertainty classification thresholds (used in classify_uncertainty())
+  # Based on MAX variance across 14 classes (not mean — clinical safety)
+  # LOW:    max_variance < threshold / 2
+  # MEDIUM: max_variance < threshold
+  # HIGH:   max_variance >= threshold
+  uncertainty_threshold: 0.05
+
+
+# -----------------------------------------------------------------------------
+# EVALUATION
+# -----------------------------------------------------------------------------
+evaluation:
+  # Where to save evaluation results, plots, and metric JSON files
+  output_dir: "experiments/results"
+
+  # Number of bins for Expected Calibration Error (ECE) computation
+  # 15 bins is standard in calibration literature
+  calibration_bins: 15
+
+  # MC Dropout passes during VALIDATION (trainer.py validate() method)
+  # Kept at T=10 for speed — validation runs every epoch during training
+  # Final publishable results always use mc_passes=50 via evaluate.py
+  val_mc_passes: 10
+
+
+# -----------------------------------------------------------------------------
+# DISEASE CLASSES
+# -----------------------------------------------------------------------------
+# Ordered list of 14 NIH ChestX-ray14 disease labels.
+# ORDER MATTERS — must match the column order in your labels CSV exactly.
+# This list is used everywhere: loss weighting, AUC per class, plots, reports.
+disease_classes:
+  - Atelectasis
+  - Consolidation
+  - Infiltration
+  - Pneumothorax
+  - Edema
+  - Emphysema
+  - Fibrosis
+  - Effusion
+  - Pneumonia
+  - Pleural_Thickening
+  - Cardiomegaly
+  - Nodule
+  - Mass
+  - Hernia 

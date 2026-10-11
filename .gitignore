@@ -1,0 +1,69 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+*.so
+.Python
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Test and tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Notebooks and local tooling
+.ipynb_checkpoints/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.claude/
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+
+# Datasets and large local assets
+data/*
+!data/__init__.py
+!data/dataset.py
+!data/transforms.py
+!data/splits/
+!data/splits/*.txt
+!data/splits/*.csv
+!data/Covid-X/
+!data/Covid-X/*.txt
+data/*.pdf
+*.zip
+*.tar
+*.tar.gz
+*.7z
+*.h5
+*.hdf5
+*.pt
+*.pth
+*.ckpt
+
+# Generated experiment outputs
+experiments/checkpoints/
+experiments/logs/
+experiments/results/
+figures/
+graphs/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
